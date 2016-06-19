@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function
+import ast
 from collections import OrderedDict
 from copy import copy
 import os
@@ -99,14 +100,19 @@ def ns_cfg(custom_selectors, selectors=None):
         unix64=plat.startswith(('linux', 'darwin')) and is_x64,
         x86=not is_x64,
         x64=is_x64,
-        os=os,
-        environ=os.environ,
     )
     if selectors is None:
         selectors = []
     selector_dict = dict((s, s in selectors) for s in custom_selectors)
     d.update(selector_dict)
     return d
+
+
+def replace_selectors(cond, selectors):
+    # match whole words only
+    pattern = re.compile(r'\b(' + '|'.join(selectors.keys()) + r')\b')
+    # replace selectors by bool literals
+    return pattern.sub(lambda x: str(bool(selectors[x.group()])), cond)
 
 
 sel_pat = re.compile(r'(.+?)\s*(#.*)\[(.+)\](?(2).*)$')
@@ -125,7 +131,8 @@ def select_lines(yamlstr, filename, custom_selectors, selectors=None):
             # condition found, eval it
             cond = m.group(3)
             try:
-                if eval(cond, namespace, {}):
+                cond = replace_selectors(cond, selectors)
+                if ast.literal_eval(cond):
                     lines.append(orig_lines[i])
             except NameError:
                 continue  # if a selector is undefined, that equates to False
