@@ -12,7 +12,7 @@ class YamlFileSpec(object):
 
     def can_handle(self):
         try:
-            self._environment = env.from_file(self.filename, self.selectors)
+            self._environment = env.from_file(self.filename, selectors=self.selectors)
             return True
         except EnvironmentFileNotFound as e:
             self.msg = str(e)
