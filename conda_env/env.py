@@ -109,7 +109,7 @@ def ns_cfg(custom_selectors, selectors=None):
     return d
 
 
-sel_pat = re.compile(r'(.+?)\s*(#.*)?\[(.+)\](?(2).*)$')
+sel_pat = re.compile(r'(.+?)\s*(#.*)\[(.+)\](?(2).*)$')
 def select_lines(yamlstr, filename, custom_selectors, selectors=None):
     if selectors and len(selectors) == 1 and selectors[0] == "all":
         selectors = custom_selectors
