@@ -108,12 +108,26 @@ def ns_cfg(custom_selectors, selectors=None):
     return d
 
 
-def replace_selectors(cond, selectors):
+def eval_condition(cond, selectors):
     # match whole words only
     pattern = re.compile(r'\b(' + '|'.join(selectors.keys()) + r')\b')
     # replace selectors by bool literals
-    return pattern.sub(lambda x: str(bool(selectors[x.group()])), cond)
+    cond = pattern.sub(lambda x: str(bool(selectors[x.group()])), cond)
 
+    tree = ast.parse(cond)
+    
+    if not isinstance(tree, ast.Module) or not isinstance(tree.body, ast.Expr) \
+       or len(tree.body) != 1:
+        raise ValueError("only expressions are allowed as conditions")
+    expression = tree.body[0]
+    
+    allowed_ops = (ast.Expr, ast.BoolOp, ast.And, ast.Or, ast.NameConstant, ast.UnaryOp, ast.Invert,
+                   ast.Compare, ast.Eq, ast.NotEq, ast.Is, ast.IsNot, ast.Not, ast.If,)
+    if not all(issubclass(type(node), allowed_ops) for node in ast.walk(expression)):
+        raise ValueError("only the following types of operations are allowed: {}".format(allowed_ops))
+    
+    return eval(cond)
+    
 
 sel_pat = re.compile(r'(.+?)\s*(#.*)\[(.+)\](?(2).*)$')
 def select_lines(yamlstr, filename, custom_selectors, selectors=None):
@@ -131,8 +145,7 @@ def select_lines(yamlstr, filename, custom_selectors, selectors=None):
             # condition found, eval it
             cond = m.group(3)
             try:
-                cond = replace_selectors(cond, selectors)
-                if ast.literal_eval(cond):
+                if eval_condition(cond, selectors):
                     lines.append(orig_lines[i])
             except NameError:
                 continue  # if a selector is undefined, that equates to False
